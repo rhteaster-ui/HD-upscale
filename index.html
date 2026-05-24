@@ -303,19 +303,24 @@
         <span class="bg-emerald-100 text-emerald-600 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200">Berhasil</span>
       </div>
       
-      <div class="mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-2xl mx-auto">
-          <div class="rounded-3xl border-2 border-slate-200 bg-slate-50 p-3">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2">Original</h3>
-            <div class="rounded-2xl overflow-hidden bg-white min-h-[220px] flex items-center justify-center">
-              <img id="originalImagePreview" alt="Original image" class="w-full h-auto object-contain max-h-[55vh]" />
-            </div>
+      <div class="mb-6 max-w-2xl mx-auto">
+        <div class="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200 mb-3">
+          <button type="button" id="tabOriginal" class="px-4 py-2 rounded-lg text-xs font-bold tracking-wide text-slate-600 bg-white shadow-sm">ORIGINAL</button>
+          <button type="button" id="tabResult" class="px-4 py-2 rounded-lg text-xs font-bold tracking-wide text-slate-500">RESULT</button>
+        </div>
+
+        <div class="rounded-3xl border-2 border-slate-200 bg-slate-50 p-3">
+          <div class="flex items-center justify-between mb-2">
+            <h3 id="previewTitle" class="text-xs font-bold uppercase tracking-wider text-slate-500">Original Preview</h3>
+            <button type="button" id="previewFullBtn" class="inline-flex items-center gap-1 text-xs font-bold text-brand-600 hover:text-brand-500">
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15 3h6m0 0v6m0-6l-7 7M9 21H3m0 0v-6m0 6l7-7" />
+              </svg>
+              <span>Preview Full</span>
+            </button>
           </div>
-          <div class="rounded-3xl border-2 border-brand-100 bg-slate-50 p-3">
-            <h3 class="text-xs font-bold uppercase tracking-wider text-brand-500 mb-2">Result</h3>
-            <div class="rounded-2xl overflow-hidden bg-white min-h-[220px] flex items-center justify-center">
-              <img id="resultImage" alt="Upscaled result" class="w-full h-auto object-contain max-h-[55vh]" />
-            </div>
+          <div class="rounded-2xl overflow-hidden bg-white min-h-[220px] flex items-center justify-center">
+            <img id="previewImage" alt="Preview image" class="w-full h-auto object-contain max-h-[55vh]" />
           </div>
         </div>
       </div>
@@ -392,13 +397,33 @@
     const statusText = document.getElementById('statusText');
     const resultCard = document.getElementById('resultCard');
     
-    const originalImagePreview = document.getElementById('originalImagePreview'); // Elemen Preview Original Baru
-    const resultImage = document.getElementById('resultImage');
+    const previewImage = document.getElementById('previewImage');
+    const tabOriginal = document.getElementById('tabOriginal');
+    const tabResult = document.getElementById('tabResult');
+    const previewTitle = document.getElementById('previewTitle');
+    const previewFullBtn = document.getElementById('previewFullBtn');
     
     const downloadBtn = document.getElementById('downloadBtn');
 
     let currentResultUrl = '';
     let currentOriginalUrl = ''; // Variabel URL lokal untuk file original
+    let activePreview = 'original';
+
+    const updatePreview = () => {
+      const isResult = activePreview === 'result';
+      const canShowResult = !!currentResultUrl;
+      const showResult = isResult && canShowResult;
+      const src = showResult ? currentResultUrl : currentOriginalUrl;
+
+      previewImage.src = src || '';
+      previewTitle.textContent = showResult ? 'Result Preview' : 'Original Preview';
+
+      tabOriginal.className = `px-4 py-2 rounded-lg text-xs font-bold tracking-wide ${showResult ? 'text-slate-500' : 'text-slate-600 bg-white shadow-sm'}`;
+      tabResult.className = `px-4 py-2 rounded-lg text-xs font-bold tracking-wide ${showResult ? 'text-slate-600 bg-white shadow-sm' : 'text-slate-500'}`;
+      tabResult.disabled = !canShowResult;
+      tabResult.classList.toggle('opacity-50', !canShowResult);
+      tabResult.classList.toggle('cursor-not-allowed', !canShowResult);
+    };
 
     imageInput.addEventListener('change', () => {
       const file = imageInput.files?.[0];
@@ -406,10 +431,28 @@
       
       // LOGIKA BARU: Tampilkan preview foto original sebelum/sesudah upscaled
       if (file) {
+        currentResultUrl = '';
         if (currentOriginalUrl) URL.revokeObjectURL(currentOriginalUrl); // Bersihkan memori URL lama
         currentOriginalUrl = URL.createObjectURL(file);
-        if (originalImagePreview) originalImagePreview.src = currentOriginalUrl;
+        activePreview = 'original';
+        updatePreview();
       }
+    });
+
+    tabOriginal.addEventListener('click', () => {
+      activePreview = 'original';
+      updatePreview();
+    });
+
+    tabResult.addEventListener('click', () => {
+      if (!currentResultUrl) return;
+      activePreview = 'result';
+      updatePreview();
+    });
+
+    previewFullBtn.addEventListener('click', () => {
+      const previewSrc = previewImage.src;
+      if (previewSrc) window.open(previewSrc, '_blank', 'noopener,noreferrer');
     });
 
     const setLoading = (loading) => {
@@ -443,12 +486,12 @@
 
         progressBar.style.width = '100%';
         currentResultUrl = data.dataUrl;
-        resultImage.src = currentResultUrl;
+        activePreview = 'result';
+        updatePreview();
         downloadBtn.href = currentResultUrl;
         downloadBtn.download = data.fileName || 'spark-upscaled.jpg';
         resultCard.classList.remove('hidden');
-        statusText.textContent = 'Done! Result siap di-download.';
-        setTimeout(() => downloadBtn.click(), 200);
+        statusText.textContent = 'Done! Result siap dipreview. Klik Download jika sudah sesuai.';
       } catch (err) {
         statusText.textContent = `Error: ${err.message}`;
       } finally {
