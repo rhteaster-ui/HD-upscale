@@ -11,6 +11,45 @@ export const config = {
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 
+const COOLDOWN_MS = 90 * 1000;
+const MAX_PER_HOUR = 5;
+const HOURLY_WINDOW_MS = 60 * 60 * 1000;
+const requestLog = new Map();
+
+const getClientIp = (req) => {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.trim()) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.headers['x-real-ip'] || req.socket?.remoteAddress || 'unknown';
+};
+
+const checkRateLimit = (clientId) => {
+  const now = Date.now();
+  const state = requestLog.get(clientId) || { timestamps: [], lastRequestAt: 0 };
+  const recent = state.timestamps.filter((ts) => now - ts < HOURLY_WINDOW_MS);
+
+  if (state.lastRequestAt && now - state.lastRequestAt < COOLDOWN_MS) {
+    return {
+      allowed: false,
+      error: `Cooldown aktif. Coba lagi dalam ${Math.ceil((COOLDOWN_MS - (now - state.lastRequestAt)) / 1000)} detik.`
+    };
+  }
+
+  if (recent.length >= MAX_PER_HOUR) {
+    const retryAfter = Math.ceil((HOURLY_WINDOW_MS - (now - recent[0])) / 1000);
+    return {
+      allowed: false,
+      error: `Batas 5x upscale per jam tercapai. Coba lagi dalam ${retryAfter} detik.`
+    };
+  }
+
+  recent.push(now);
+  requestLog.set(clientId, { timestamps: recent, lastRequestAt: now });
+  return { allowed: true };
+};
+
+
 const parseForm = (req) =>
   new Promise((resolve, reject) => {
     const form = formidable({
@@ -30,6 +69,13 @@ const clampSize = (n) => Math.max(512, Math.min(n, 8192));
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
     res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  const clientId = getClientIp(req);
+  const rateLimit = checkRateLimit(clientId);
+  if (!rateLimit.allowed) {
+    res.status(429).json({ error: rateLimit.error });
     return;
   }
 

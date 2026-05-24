@@ -303,39 +303,30 @@
         <span class="bg-emerald-100 text-emerald-600 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200">Berhasil</span>
       </div>
       
-      <!-- Preview Original VS Result Grid -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        
-        <!-- Kolom Kiri: Original -->
-        <div class="rounded-3xl overflow-hidden border-2 border-slate-100 bg-slate-50 relative group flex items-center justify-center p-2 min-h-[250px]">
-          <span class="absolute top-4 left-4 z-10 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl">Original</span>
-          <img id="originalImagePreview" alt="Original image" class="max-w-full h-auto object-contain max-h-[50vh] rounded-2xl opacity-90 transition-opacity" />
+      <div class="mb-6">
+        <div class="relative rounded-3xl overflow-hidden border-2 border-brand-100 bg-slate-50 min-h-[280px] max-w-2xl mx-auto" id="compareWrap">
+          <img id="originalImagePreview" alt="Original image" class="w-full h-auto object-contain max-h-[60vh]" />
+          <div id="compareOverlay" class="absolute inset-0 overflow-hidden" style="width:50%;">
+            <img id="resultImage" alt="Upscaled result" class="w-full h-full object-contain" />
+          </div>
+          <div id="compareHandle" class="absolute inset-y-0" style="left:50%;">
+            <div class="h-full w-0.5 bg-white/90 shadow-[0_0_10px_rgba(0,0,0,0.2)]"></div>
+            <div class="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 bg-white border border-slate-200 rounded-full px-3 py-1 text-[10px] font-bold text-slate-600 shadow">Geser</div>
+          </div>
+          <input id="compareSlider" type="range" min="0" max="100" value="50" class="absolute inset-x-0 bottom-3 w-[95%] mx-auto accent-sky-500">
+          <span class="absolute top-4 left-4 z-10 bg-black/60 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl">Before</span>
+          <span class="absolute top-4 right-4 z-10 bg-brand-500 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl">Result HD</span>
         </div>
-
-        <!-- Kolom Kanan: Upscaled (Dengan efek glow/fokus) -->
-        <div class="rounded-3xl overflow-hidden border-2 border-brand-200 bg-brand-50 relative group flex items-center justify-center p-2 min-h-[250px] shadow-[0_0_25px_rgba(14,165,233,0.15)] ring-2 ring-brand-400 ring-offset-2">
-          <span class="absolute top-4 left-4 z-10 bg-brand-500 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1.5">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg>
-            Upscaled HD
-          </span>
-          <img id="resultImage" alt="Upscaled result" class="max-w-full h-auto object-contain max-h-[50vh] rounded-2xl shadow-sm" />
-        </div>
-
       </div>
       
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto w-full">
+      <div class="max-w-2xl mx-auto w-full">
         <a id="downloadBtn" download="spark-upscaled.jpg" class="flex items-center justify-center space-x-2 py-3.5 rounded-2xl bg-slate-800 text-white font-bold text-sm hover:bg-slate-700 shadow-md transition-colors cursor-pointer">
           <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
             <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
           </svg>
           <span>Download Gambar</span>
         </a>
-        <button id="copyBtn" type="button" class="flex items-center justify-center space-x-2 py-3.5 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 font-bold text-sm hover:border-slate-300 hover:bg-slate-50 transition-colors">
-          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
-          </svg>
-          <span>Copy URL Gambar</span>
-        </button>
+        
       </div>
     </section>
 
@@ -404,7 +395,9 @@
     const resultImage = document.getElementById('resultImage');
     
     const downloadBtn = document.getElementById('downloadBtn');
-    const copyBtn = document.getElementById('copyBtn');
+    const compareSlider = document.getElementById('compareSlider');
+    const compareOverlay = document.getElementById('compareOverlay');
+    const compareHandle = document.getElementById('compareHandle');
 
     let currentResultUrl = '';
     let currentOriginalUrl = ''; // Variabel URL lokal untuk file original
@@ -457,6 +450,7 @@
         downloadBtn.download = data.fileName || 'spark-upscaled.jpg';
         resultCard.classList.remove('hidden');
         statusText.textContent = 'Done! Result siap di-download.';
+        setTimeout(() => downloadBtn.click(), 200);
       } catch (err) {
         statusText.textContent = `Error: ${err.message}`;
       } finally {
@@ -465,25 +459,14 @@
       }
     });
 
-    copyBtn.addEventListener('click', async () => {
-      if (!currentResultUrl) return;
-      await navigator.clipboard.writeText(currentResultUrl);
-      
-      // Simpan teks asli
-      const originalHtml = copyBtn.innerHTML;
-      
-      copyBtn.innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
-        Copied!
-      `;
-      // Ubah warna text agar cocok di tema terang
-      copyBtn.classList.add('text-teal-600', 'border-teal-200', 'bg-teal-50');
-      
-      setTimeout(() => { 
-        copyBtn.innerHTML = originalHtml; 
-        copyBtn.classList.remove('text-teal-600', 'border-teal-200', 'bg-teal-50');
-      }, 1500);
-    });
+    const updateCompare = () => {
+      const pct = compareSlider.value;
+      compareOverlay.style.width = `${pct}%`;
+      compareHandle.style.left = `${pct}%`;
+    };
+
+    compareSlider.addEventListener('input', updateCompare);
+    updateCompare();
   </script>
 </body>
   </html> 
