@@ -1,0 +1,14 @@
+{
+  "name": "spark-hd-upscaler",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vercel dev",
+    "start": "vercel dev"
+  },
+  "dependencies": {
+    "formidable": "^3.5.1",
+    "sharp": "^0.34.1"
+  }
+}
