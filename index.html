@@ -1,0 +1,489 @@
+<!doctype html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Spark HD Upscaler - Fresh Edition</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#f0f9ff',
+              100: '#e0f2fe',
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+            },
+            accent: {
+              50: '#f5f3ff',
+              100: '#ede9fe',
+              400: '#a78bfa',
+              500: '#8b5cf6',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    body {
+      background-color: #f8fafc;
+      color: #334155;
+    }
+    
+    /* 60fps Background Optimization: Memisahkan gradient ke layer khusus agar tidak repainting saat scroll */
+    .bg-fixed-gradient {
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      pointer-events: none;
+      background-image: 
+        radial-gradient(at 0% 0%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 0%, rgba(56, 189, 248, 0.15) 0px, transparent 50%),
+        radial-gradient(at 100% 100%, rgba(139, 92, 246, 0.15) 0px, transparent 50%),
+        radial-gradient(at 0% 100%, rgba(56, 189, 248, 0.15) 0px, transparent 50%);
+    }
+
+    /* Smooth 60fps Ticker Animation */
+    .ticker-wrapper {
+      mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+      -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent);
+    }
+    .ticker-track {
+      animation: ticker 25s linear infinite; /* Pelan dan mulus */
+      will-change: transform; /* Mendorong animasi ke GPU (60fps) */
+    }
+    @keyframes ticker {
+      0% { transform: translate3d(0, 0, 0); }
+      100% { transform: translate3d(-50%, 0, 0); } /* Loop presisi */
+    }
+
+    /* Hide standard inputs */
+    input[type="radio"], input[type="checkbox"] { display: none; }
+
+    /* Custom Radio styling for smooth light mode */
+    .radio-label {
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    input[type="radio"]:checked + .radio-label {
+      background-color: white;
+      color: #0ea5e9;
+      box-shadow: 0 4px 6px -1px rgba(14, 165, 233, 0.1), 0 2px 4px -2px rgba(14, 165, 233, 0.1);
+      border-color: #bae6fd;
+    }
+    
+    /* Custom Soft Toggle */
+    .toggle-track {
+      transition: all 0.3s ease;
+    }
+    .toggle-thumb {
+      transition: all 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    }
+    input[type="checkbox"]:checked ~ .toggle-track {
+      background: linear-gradient(to right, #8b5cf6, #38bdf8);
+    }
+    input[type="checkbox"]:checked ~ .toggle-track .toggle-thumb {
+      transform: translateX(24px);
+    }
+
+    /* Animated gradient for progress bar */
+    .progress-bar-stripe {
+      background: linear-gradient(90deg, #8b5cf6, #38bdf8, #8b5cf6);
+      background-size: 200% 100%;
+      animation: gradient-move 2s linear infinite;
+    }
+    @keyframes gradient-move {
+      0% { background-position: 100% 0; }
+      100% { background-position: -100% 0; }
+    }
+    
+    /* Upload zone hover */
+    .upload-zone:hover {
+      border-color: #8b5cf6;
+      background-color: #f5f3ff; /* accent-50 */
+    }
+    .upload-zone:hover .upload-icon {
+      transform: scale(1.1);
+      color: #8b5cf6;
+      background-color: white;
+      box-shadow: 0 10px 15px -3px rgba(139, 92, 246, 0.1);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased selection:bg-brand-100 selection:text-brand-600">
+
+  <!-- Layer Background khusus agar web sangat ringan -->
+  <div class="bg-fixed-gradient"></div>
+
+  <main class="container mx-auto max-w-3xl px-5 py-12 flex-grow flex flex-col justify-center relative z-10">
+    
+    <!-- Header Section -->
+    <header class="text-center mb-10">
+      <div class="inline-flex items-center justify-center space-x-2 bg-white/60 backdrop-blur-sm border border-white rounded-full px-4 py-1.5 mb-6 shadow-sm">
+        <span class="flex h-2.5 w-2.5 rounded-full bg-brand-500 animate-pulse"></span>
+        <span class="text-[11px] font-bold tracking-wider text-brand-600 uppercase">AI Image Enhancer</span>
+      </div>
+      <h1 class="text-4xl md:text-5xl font-extrabold tracking-tight mb-4 text-slate-800">
+        Spark <span class="text-transparent bg-clip-text bg-gradient-to-r from-accent-500 to-brand-500">Upscaler</span>
+      </h1>
+      <p class="text-slate-500 text-sm md:text-base max-w-md mx-auto leading-relaxed font-medium mb-6">
+        Tingkatkan kualitas gambarmu jadi super tajam dan jernih dalam sekali klik.
+      </p>
+
+      <!-- Ticker Fitur Badges (60fps Looping) -->
+      <div class="ticker-wrapper relative w-full overflow-hidden flex mx-auto max-w-[90%] md:max-w-[80%] py-1">
+        <div class="ticker-track flex items-center gap-3 w-max hover:[animation-play-state:paused] transition-all">
+          <!-- SET 1 -->
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+            100% Free
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-rose-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+            Tanpa Iklan
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg>
+            Super Cepat
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.358.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+            Aman
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-teal-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>
+            Ringan
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            Simpel
+          </span>
+
+          <!-- SET 2 (Duplikat untuk ilusi Looping tanpa jeda) -->
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-emerald-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+            100% Free
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-rose-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd" /></svg>
+            Tanpa Iklan
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg>
+            Super Cepat
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-blue-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M2.166 4.999A11.954 11.954 0 0010 1.944 11.954 11.954 0 0017.834 5c.11.65.166 1.32.166 2.001 0 5.225-3.34 9.67-8 11.317C5.34 16.67 2 12.225 2 7c0-.682.057-1.358.166-2.001zm11.541 3.708a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd" /></svg>
+            Aman
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-teal-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.24 12.24a6 6 0 0 0-8.49-8.49L5 10.5V19h8.5z"></path><line x1="16" y1="8" x2="2" y2="22"></line><line x1="17.5" y1="15" x2="9" y2="15"></line></svg>
+            Ringan
+          </span>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/80 backdrop-blur-md border border-slate-200 rounded-full text-xs font-bold text-slate-600 shadow-sm whitespace-nowrap">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-purple-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z"/></svg>
+            Simpel
+          </span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Main White Card -->
+    <section class="bg-white/80 backdrop-blur-xl border border-white rounded-[2rem] p-6 md:p-8 mb-8 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] max-w-2xl mx-auto w-full">
+      <form id="upscaleForm" class="space-y-7">
+        
+        <!-- Upload Zone -->
+        <label for="imageInput" class="upload-zone relative flex flex-col items-center justify-center p-10 border-2 border-dashed border-slate-200 rounded-3xl transition-all duration-300 cursor-pointer bg-slate-50/50 overflow-hidden group">
+          <input id="imageInput" name="image" type="file" accept="image/*" required class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" />
+          
+          <div class="upload-icon w-16 h-16 bg-white shadow-sm border border-slate-100 rounded-full flex items-center justify-center text-slate-400 mb-4 transition-all duration-300">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+            </svg>
+          </div>
+          <span id="fileLabel" class="text-[15px] font-bold text-slate-700 text-center mb-1">Tap untuk upload image</span>
+          <p class="text-xs font-medium text-slate-400">JPG, PNG, WEBP (Maks 10MB)</p>
+        </label>
+
+        <!-- Settings Area -->
+        <div class="space-y-5">
+          <!-- Quality Selector -->
+          <div>
+            <div class="flex justify-between items-center mb-3">
+              <span class="text-sm font-bold text-slate-700">Pilih Resolusi Output</span>
+            </div>
+            <div class="grid grid-cols-3 gap-3 p-1.5 bg-slate-100/80 rounded-2xl">
+              <label class="cursor-pointer relative">
+                <input type="radio" name="quality" value="4K" checked />
+                <div class="radio-label text-center py-2.5 rounded-xl text-slate-500 font-bold text-sm border border-transparent">4K</div>
+              </label>
+              <label class="cursor-pointer relative">
+                <input type="radio" name="quality" value="6K" />
+                <div class="radio-label text-center py-2.5 rounded-xl text-slate-500 font-bold text-sm border border-transparent">6K</div>
+              </label>
+              <label class="cursor-pointer relative">
+                <input type="radio" name="quality" value="8K" />
+                <div class="radio-label text-center py-2.5 rounded-xl text-slate-500 font-bold text-sm border border-transparent">8K</div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Face Enhance Toggle -->
+          <label class="flex items-center justify-between p-4 rounded-2xl border border-slate-100 bg-slate-50/50 cursor-pointer hover:bg-slate-100/50 transition-colors">
+            <div class="flex items-center space-x-3">
+              <div class="p-2.5 bg-white shadow-sm border border-slate-100 rounded-xl text-brand-500">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <span class="block font-bold text-sm text-slate-700">Face Enhance</span>
+                <span class="block font-medium text-[11px] text-slate-400 mt-0.5">Pertajam detail wajah otomatis</span>
+              </div>
+            </div>
+            <div class="relative flex items-center">
+              <input type="checkbox" name="faceEnhance" class="peer" />
+              <div class="toggle-track w-12 h-6 bg-slate-200 rounded-full flex items-center px-1">
+                <div class="toggle-thumb w-4 h-4 bg-white rounded-full shadow-sm"></div>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Submit Button -->
+        <div class="pt-2">
+          <button type="submit" id="submitBtn" class="w-full py-4 rounded-2xl bg-gradient-to-r from-accent-500 to-brand-500 text-white font-bold text-[15px] shadow-[0_8px_20px_-6px_rgba(139,92,246,0.5)] hover:shadow-[0_12px_25px_-6px_rgba(139,92,246,0.6)] transform transition-all duration-200 hover:-translate-y-0.5 active:translate-y-0">
+            Upscale Image Sekarang
+          </button>
+        </div>
+
+        <!-- Progress & Status -->
+        <div class="space-y-2 mt-4">
+          <div class="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden hidden" id="progressWrap">
+            <div class="h-full w-0 transition-all duration-300 rounded-full progress-bar-stripe" id="progressBar"></div>
+          </div>
+          <p class="text-center text-sm font-bold text-brand-600 min-h-[20px]" id="statusText"></p>
+        </div>
+      </form>
+    </section>
+
+    <!-- Info Widgets (Soft Grid) -->
+    <section class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8 max-w-2xl mx-auto w-full">
+      <div class="bg-white/60 backdrop-blur-md border border-white py-3 px-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-[0_4px_15px_-5px_rgba(0,0,0,0.02)]">
+        <span class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Format</span>
+        <span class="text-sm font-bold text-slate-700">JPG, PNG</span>
+      </div>
+      <div class="bg-white/60 backdrop-blur-md border border-white py-3 px-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-[0_4px_15px_-5px_rgba(0,0,0,0.02)]">
+        <span class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Max Size</span>
+        <span class="text-sm font-bold text-slate-700">10 MB</span>
+      </div>
+      <div class="bg-white/60 backdrop-blur-md border border-white py-3 px-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-[0_4px_15px_-5px_rgba(0,0,0,0.02)]">
+        <span class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Kecepatan</span>
+        <span class="text-sm font-bold text-slate-700">5-20 Detik</span>
+      </div>
+      <div class="bg-white/60 backdrop-blur-md border border-white py-3 px-4 rounded-2xl flex flex-col items-center justify-center text-center shadow-[0_4px_15px_-5px_rgba(0,0,0,0.02)]">
+        <span class="text-slate-400 text-[10px] font-bold uppercase tracking-wider mb-1">Watermark</span>
+        <span class="text-sm font-bold text-brand-500">Bebas & Bersih</span>
+      </div>
+    </section>
+
+    <!-- Result Card (Diperlebar untuk menampung Before & After) -->
+    <section class="bg-white/90 backdrop-blur-xl border border-white rounded-[2rem] p-6 md:p-8 mb-12 hidden animate-[fadeIn_0.5s_ease-out] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] w-full" id="resultCard">
+      <div class="flex items-center justify-between mb-5 max-w-2xl mx-auto w-full">
+        <h2 class="text-xl font-extrabold text-slate-800">Hasil Upscale</h2>
+        <span class="bg-emerald-100 text-emerald-600 text-xs font-bold px-3 py-1 rounded-full border border-emerald-200">Berhasil</span>
+      </div>
+      
+      <!-- Preview Original VS Result Grid -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        
+        <!-- Kolom Kiri: Original -->
+        <div class="rounded-3xl overflow-hidden border-2 border-slate-100 bg-slate-50 relative group flex items-center justify-center p-2 min-h-[250px]">
+          <span class="absolute top-4 left-4 z-10 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl">Original</span>
+          <img id="originalImagePreview" alt="Original image" class="max-w-full h-auto object-contain max-h-[50vh] rounded-2xl opacity-90 transition-opacity" />
+        </div>
+
+        <!-- Kolom Kanan: Upscaled (Dengan efek glow/fokus) -->
+        <div class="rounded-3xl overflow-hidden border-2 border-brand-200 bg-brand-50 relative group flex items-center justify-center p-2 min-h-[250px] shadow-[0_0_25px_rgba(14,165,233,0.15)] ring-2 ring-brand-400 ring-offset-2">
+          <span class="absolute top-4 left-4 z-10 bg-brand-500 text-white text-[10px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-xl shadow-md flex items-center gap-1.5">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M11.3 1.046A1 1 0 0112 2v5h4a1 1 0 01.82 1.573l-7 10A1 1 0 018 18v-5H4a1 1 0 01-.82-1.573l7-10a1 1 0 011.12-.38z" clip-rule="evenodd" /></svg>
+            Upscaled HD
+          </span>
+          <img id="resultImage" alt="Upscaled result" class="max-w-full h-auto object-contain max-h-[50vh] rounded-2xl shadow-sm" />
+        </div>
+
+      </div>
+      
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto w-full">
+        <a id="downloadBtn" download="spark-upscaled.jpg" class="flex items-center justify-center space-x-2 py-3.5 rounded-2xl bg-slate-800 text-white font-bold text-sm hover:bg-slate-700 shadow-md transition-colors cursor-pointer">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+          </svg>
+          <span>Download Gambar</span>
+        </a>
+        <button id="copyBtn" type="button" class="flex items-center justify-center space-x-2 py-3.5 rounded-2xl bg-white border-2 border-slate-200 text-slate-700 font-bold text-sm hover:border-slate-300 hover:bg-slate-50 transition-colors">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+          </svg>
+          <span>Copy URL Gambar</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Developer Profile Card -->
+    <section class="bg-white/70 backdrop-blur-md border border-white rounded-[2rem] p-6 shadow-[0_10px_30px_-15px_rgba(0,0,0,0.05)] mt-4 mb-6 max-w-2xl mx-auto w-full">
+      <div class="flex flex-col md:flex-row items-center md:items-start gap-6">
+        <!-- Foto (Rounded Kotak Halus / Squircle, bukan bulat sempurna) -->
+        <div class="shrink-0 relative">
+          <div class="absolute -inset-1 bg-gradient-to-r from-accent-400 to-brand-400 rounded-3xl blur opacity-20"></div>
+          <img src="https://raw.githubusercontent.com/rhteaster-ui/Pp-dev/refs/heads/main/pp-dev.png" alt="R_hmt ofc Profile" class="relative w-24 h-24 object-cover rounded-2xl shadow-sm border-2 border-white bg-white">
+        </div>
+        
+        <div class="flex-1 text-center md:text-left">
+          <h3 class="text-xl font-extrabold text-slate-800">R_hmt ofc</h3>
+          <p class="text-sm font-semibold text-slate-500 mb-4">Independent Web Developer</p>
+          
+          <!-- Social Media Links -->
+          <div class="flex flex-wrap justify-center md:justify-start gap-3">
+            <!-- Telegram -->
+            <a href="https://t.me/rAi_engine" target="_blank" rel="noreferrer" class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 hover:border-slate-200 hover:-translate-y-0.5 transition-all shadow-sm group">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-sky-500 group-hover:text-sky-600"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>
+              <span class="text-xs font-bold text-slate-600">Telegram</span>
+            </a>
+            
+            <!-- WhatsApp Channel (Menggunakan SVG LOGO WA Asli) -->
+            <a href="https://whatsapp.com/channel/0029VbBjyjlJ93wa6hwSWa0p" target="_blank" rel="noreferrer" class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 hover:border-slate-200 hover:-translate-y-0.5 transition-all shadow-sm group">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" class="text-emerald-500 group-hover:text-emerald-600">
+                <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.206-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.008c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.095 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.198 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.052 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z"/>
+              </svg>
+              <span class="text-xs font-bold text-slate-600">Channel</span>
+            </a>
+
+            <!-- TikTok -->
+            <a href="https://www.tiktok.com/@r_hmtofc?_r=1&_t=ZS-94KRfWQjeUu" target="_blank" rel="noreferrer" class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 hover:border-slate-200 hover:-translate-y-0.5 transition-all shadow-sm group">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-slate-700 group-hover:text-black"><path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5"/></svg>
+              <span class="text-xs font-bold text-slate-600">TikTok</span>
+            </a>
+
+            <!-- Instagram -->
+            <a href="https://www.instagram.com/rahmt_nhw?igsh=MWQwcnB3bTA2ZnVidg==" target="_blank" rel="noreferrer" class="flex items-center gap-2 px-3 py-2 bg-white border border-slate-100 rounded-xl hover:bg-slate-50 hover:border-slate-200 hover:-translate-y-0.5 transition-all shadow-sm group">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-pink-500 group-hover:text-pink-600"><rect width="20" height="20" x="2" y="2" rx="5" ry="5"/><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"/><line x1="17.5" x2="17.51" y1="6.5" y2="6.5"/></svg>
+              <span class="text-xs font-bold text-slate-600">Instagram</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="mt-auto pb-8 text-center text-slate-400 font-medium text-sm relative z-10">
+    <p>&copy; 2026 Spark Upscaler. All rights reserved.</p>
+  </footer>
+
+  <!-- SCRIPT ASLI (DITAMBAH FUNGSI BACA PREVIEW ORIGINAL SAJA) -->
+  <script>
+    const form = document.getElementById('upscaleForm');
+    const imageInput = document.getElementById('imageInput');
+    const fileLabel = document.getElementById('fileLabel');
+    const progressWrap = document.getElementById('progressWrap');
+    const progressBar = document.getElementById('progressBar');
+    const statusText = document.getElementById('statusText');
+    const resultCard = document.getElementById('resultCard');
+    
+    const originalImagePreview = document.getElementById('originalImagePreview'); // Elemen Preview Original Baru
+    const resultImage = document.getElementById('resultImage');
+    
+    const downloadBtn = document.getElementById('downloadBtn');
+    const copyBtn = document.getElementById('copyBtn');
+
+    let currentResultUrl = '';
+    let currentOriginalUrl = ''; // Variabel URL lokal untuk file original
+
+    imageInput.addEventListener('change', () => {
+      const file = imageInput.files?.[0];
+      fileLabel.textContent = file ? `${file.name} (${Math.round(file.size / 1024)} KB)` : 'Tap untuk upload image';
+      
+      // LOGIKA BARU: Tampilkan preview foto original sebelum/sesudah upscaled
+      if (file) {
+        if (currentOriginalUrl) URL.revokeObjectURL(currentOriginalUrl); // Bersihkan memori URL lama
+        currentOriginalUrl = URL.createObjectURL(file);
+        if (originalImagePreview) originalImagePreview.src = currentOriginalUrl;
+      }
+    });
+
+    const setLoading = (loading) => {
+      progressWrap.classList.toggle('hidden', !loading);
+      if (!loading) progressBar.style.width = '0%';
+    };
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const file = imageInput.files?.[0];
+      if (!file) return;
+
+      statusText.textContent = 'Processing image...';
+      setLoading(true);
+
+      let progress = 0;
+      const timer = setInterval(() => {
+        progress = Math.min(progress + 10, 90);
+        progressBar.style.width = `${progress}%`;
+      }, 250);
+
+      const formData = new FormData(form);
+      try {
+        const res = await fetch('/api/upscale', {
+          method: 'POST',
+          body: formData
+        });
+        const data = await res.json();
+
+        if (!res.ok) throw new Error(data.error || 'Upscale failed');
+
+        progressBar.style.width = '100%';
+        currentResultUrl = data.dataUrl;
+        resultImage.src = currentResultUrl;
+        downloadBtn.href = currentResultUrl;
+        downloadBtn.download = data.fileName || 'spark-upscaled.jpg';
+        resultCard.classList.remove('hidden');
+        statusText.textContent = 'Done! Result siap di-download.';
+      } catch (err) {
+        statusText.textContent = `Error: ${err.message}`;
+      } finally {
+        clearInterval(timer);
+        setTimeout(() => setLoading(false), 450);
+      }
+    });
+
+    copyBtn.addEventListener('click', async () => {
+      if (!currentResultUrl) return;
+      await navigator.clipboard.writeText(currentResultUrl);
+      
+      // Simpan teks asli
+      const originalHtml = copyBtn.innerHTML;
+      
+      copyBtn.innerHTML = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+        Copied!
+      `;
+      // Ubah warna text agar cocok di tema terang
+      copyBtn.classList.add('text-teal-600', 'border-teal-200', 'bg-teal-50');
+      
+      setTimeout(() => { 
+        copyBtn.innerHTML = originalHtml; 
+        copyBtn.classList.remove('text-teal-600', 'border-teal-200', 'bg-teal-50');
+      }, 1500);
+    });
+  </script>
+</body>
+  </html> 
