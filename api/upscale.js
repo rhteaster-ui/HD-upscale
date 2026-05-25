@@ -140,6 +140,24 @@ async function fetchWithRetry(url, options, retries = 3, baseDelay = 1000) {
   }
 }
 
+
+const toDataUrl = async (url) => {
+  const res = await fetch(url, {
+    headers: {
+      accept: 'image/*',
+      referer: REFERER,
+      'user-agent': getRandomUA()
+    }
+  });
+  if (!res.ok) {
+    throw new Error(`Failed to fetch processed image: HTTP ${res.status}`);
+  }
+  const contentType = res.headers.get('content-type') || 'image/png';
+  const arrayBuffer = await res.arrayBuffer();
+  const base64 = Buffer.from(arrayBuffer).toString('base64');
+  return { dataUrl: `data:${contentType};base64,${base64}`, mimeType: contentType };
+};
+
 async function upscaleWithSparkPix(file, fields) {
   const qualityInput = pick(fields.quality, pick(fields.resolution, '4K'));
   const { quality, scale } = normalizeQuality(qualityInput);
@@ -224,11 +242,13 @@ export default async function handler(req, res) {
 
     const result = await upscaleWithSparkPix(file, fields);
 
+    const { dataUrl, mimeType } = await toDataUrl(result.resultUrl);
+
     res.status(200).json({
       success: true,
-      mimeType: 'image/png',
+      mimeType,
       fileName: `upscaled-${result.quality.toLowerCase()}.png`,
-      dataUrl: result.resultUrl,
+      dataUrl,
       resultUrl: result.resultUrl,
       processingTime: result.processingTime,
       quality: result.quality,

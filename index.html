@@ -485,13 +485,13 @@
         if (!res.ok) throw new Error(data.error || 'Upscale failed');
 
         progressBar.style.width = '100%';
-        currentResultUrl = data.dataUrl;
-        activePreview = 'result';
+        currentResultUrl = data.dataUrl || data.resultUrl;
+        activePreview = 'original';
         updatePreview();
         downloadBtn.href = currentResultUrl;
         downloadBtn.download = data.fileName || 'spark-upscaled.jpg';
         resultCard.classList.remove('hidden');
-        statusText.textContent = 'Done! Result siap dipreview. Klik Download jika sudah sesuai.';
+        statusText.textContent = 'Done! Download siap. Preview hasil hanya muncul jika tab RESULT ditekan.';
       } catch (err) {
         statusText.textContent = `Error: ${err.message}`;
       } finally {
